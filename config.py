@@ -16,41 +16,46 @@ GROQ_TEMPERATURE: float = 0.4
 
 # ─── Scan Defaults ───────────────────────────────────────────────────────────
 DEFAULT_TIMEOUT: int  = 300   # seconds
-DEFAULT_PORT_RANGE: str = "1-1024"
+DEFAULT_PORT_RANGE: str = ""   # Empty = scan top 1,000 ports across 1-65535 by default
 MAX_SUBNET_MASK: int  = 24    # Minimum /24 to prevent scanning huge ranges
 
 from typing import Dict
 
 # ─── Scan Type Definitions ───────────────────────────────────────────────────
 SCAN_TYPES: Dict[str, dict] = {
-    "Quick Scan": {
-        "args": "-Pn -T4 -F",
-        "description": "Fast scan of most common 100 ports",
+    "Standard Scan": {
+        "args": "-Pn -T4",
+        "description": "Scans top 1,000 common ports across the entire range (fast & thorough)",
         "icon": "⚡",
     },
-    "Full TCP Scan": {
-        "args": "-Pn -T4 -p-",
-        "description": "All 65535 TCP ports — thorough but slow",
-        "icon": "🔍",
+    "Quick Scan": {
+        "args": "-Pn -T4 -F",
+        "description": "Fast scan of top 100 most common ports",
+        "icon": "🚀",
     },
     "Service Version Detection": {
-        "args": "-Pn -T4 -sV -p {ports}",
+        "args": "-Pn -T4 -sV",
         "description": "Identifies service name and version on open ports",
         "icon": "🔬",
     },
     "OS Detection": {
-        "args": "-Pn -T4 -O -p {ports}",
+        "args": "-Pn -T4 -O",
         "description": "Attempts to identify the target operating system",
         "icon": "🖥️",
     },
     "Aggressive Scan": {
-        "args": "-Pn -T4 -A -p {ports}",
+        "args": "-Pn -T4 -A",
         "description": "OS, version, script scanning, and traceroute",
         "icon": "💥",
     },
+    "All Ports (1-65535)": {
+        "args": "-Pn -T4 -p-",
+        "description": "Scans all 65,535 TCP ports",
+        "icon": "🔍",
+    },
     "Custom Arguments": {
         "args": "",
-        "description": "Specify your own Nmap flags",
+        "description": "Specify your own custom Nmap flags",
         "icon": "⚙️",
     },
 }

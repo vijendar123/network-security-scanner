@@ -101,17 +101,21 @@ def build_nmap_command(
         cmd += shlex.split(custom_args)
     else:
         template = SCAN_TYPES[scan_type]["args"]
-        args_str = template.replace("{ports}", port_range)
-        tokens = shlex.split(args_str)
+        tokens = shlex.split(template)
+
+        pr_clean = port_range.strip()
+        if pr_clean.lower() in ("all", "1-65535", "-"):
+            # User wants all 65535 ports
+            tokens = [t for t in tokens if t != "-F"]
+            if not any(t == "-p-" or t.startswith("-p") for t in tokens):
+                tokens.append("-p-")
+        elif pr_clean and pr_clean.lower() not in ("default", "top"):
+            # User specified specific ports (e.g. 80,443 or 8080 or 1-10000)
+            tokens = [t for t in tokens if t != "-F"]
+            if not any(t.startswith("-p") for t in tokens):
+                tokens.extend(["-p", pr_clean])
+
         cmd += tokens
-        # Append port range only if not already specified, and not in fast mode (-F)
-        if (
-            "{ports}" not in template
-            and not any(t == "-p" or t.startswith("-p") for t in tokens)
-            and "-F" not in tokens
-            and port_range
-        ):
-            cmd += ["-p", port_range]
 
     # Always output XML to stdout for reliable parsing
     cmd += ["-oX", "-"]
@@ -136,7 +140,7 @@ class NmapScanner:
         self,
         target: str,
         scan_type: str,
-        port_range: str = "1-1024",
+        port_range: str = "",
         custom_args: str = "",
         timeout: int = DEFAULT_TIMEOUT,
     ) -> None:

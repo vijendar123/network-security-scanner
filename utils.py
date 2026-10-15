@@ -93,18 +93,20 @@ def validate_target(target: str) -> tuple[bool, str]:
 
 
 def validate_port_range(port_range: str) -> tuple[bool, str]:
-    """Validate a port range string like '1-1024' or '80,443,8080'."""
+    """Validate a port range string like '80,443,8080', '1-65535', 'all', or empty for standard default."""
     port_range = port_range.strip()
-    if not port_range:
-        return False, "Port range cannot be empty."
+    if not port_range or port_range.lower() in ("all", "default", "any", "-"):
+        return True, ""
 
     # Allow comma-separated ports and dash ranges
     if not re.match(r"^[\d,\-\s]+$", port_range):
-        return False, "Port range must only contain digits, commas, and hyphens."
+        return False, "Port range must contain port numbers, ranges (e.g. 1-65535), or 'all'."
 
     # Check individual port numbers
     parts = re.split(r"[,\s]+", port_range)
     for part in parts:
+        if not part:
+            continue
         if "-" in part:
             bounds = part.split("-")
             if len(bounds) != 2:

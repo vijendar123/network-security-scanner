@@ -376,27 +376,32 @@ def render_sidebar() -> dict:
                 help="Enter raw Nmap flags. The target is appended automatically.",
             )
 
-        st.markdown("**🔢 Port Range**")
-        ports_disabled = scan_type in ("Custom Arguments", "Quick Scan", "Full TCP Scan")
+        st.markdown("**🔢 Port Selection**")
         port_help = (
-            "Quick Scan automatically scans top 100 common ports."
-            if scan_type == "Quick Scan"
-            else (
-                "Full TCP Scan scans all 65,535 ports."
-                if scan_type == "Full TCP Scan"
-                else "Flags are specified in Custom Arguments."
-                if scan_type == "Custom Arguments"
-                else None
-            )
+            "Leave blank to scan top 1,000 common ports across the whole network. "
+            "Or enter: 'all' (all 65,535 ports), a range (e.g. '1-10000'), or specific ports (e.g. '80,443,8080,3306')."
         )
         port_range = st.text_input(
             "Ports",
-            value="1-1024",
-            placeholder="1-65535  |  80,443,8080",
+            value="",
+            placeholder="Blank for top 1,000 | 'all' for 65535 | 80,443,8080",
             label_visibility="collapsed",
-            disabled=ports_disabled,
+            disabled=(scan_type == "Custom Arguments"),
             help=port_help,
         )
+        if not port_range.strip():
+            if scan_type == "All Ports (1-65535)":
+                st.caption("ℹ️ Mode set to scan all 65,535 ports.")
+            elif scan_type == "Quick Scan":
+                st.caption("ℹ️ Mode set to scan top 100 fast ports.")
+            else:
+                st.caption("ℹ️ Default: Scanning top 1,000 common ports across 1-65535.")
+        else:
+            pr_val = port_range.strip().lower()
+            if pr_val in ("all", "1-65535", "-"):
+                st.caption("🔍 Scanning all 65,535 ports.")
+            else:
+                st.caption(f"🎯 Scanning specific ports: `{port_range.strip()}`")
 
         st.markdown("**⏱️ Timeout (seconds)**")
         timeout = st.slider("Timeout", 30, 600, 300, step=30, label_visibility="collapsed")
