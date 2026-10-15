@@ -23,7 +23,7 @@ st.set_page_config(
     },
 )
 
-from config import SCAN_TYPES, APP_TITLE, APP_VERSION, APP_TAGLINE
+from config import SCAN_TYPES, APP_TITLE, APP_VERSION, APP_TAGLINE, GROQ_MODEL
 from scanner import NmapScanner, is_nmap_installed, get_nmap_version, NmapNotFoundError
 from nmap_parser import parse_nmap_xml, flatten_open_ports
 from ai_analyzer import GroqAnalyzer, AnalysisError
@@ -331,7 +331,7 @@ def render_hero():
     <div class="hero-banner">
         <div class="hero-title">🛡️ {APP_TITLE}</div>
         <div class="hero-sub">{APP_TAGLINE}</div>
-        <span class="hero-badge">v{APP_VERSION} &nbsp;·&nbsp; Groq AI · qwen/qwen3-32b &nbsp;·&nbsp; Ethical Use Only</span>
+        <span class="hero-badge">v{APP_VERSION} &nbsp;·&nbsp; Groq AI · {GROQ_MODEL} &nbsp;·&nbsp; Ethical Use Only</span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -377,12 +377,25 @@ def render_sidebar() -> dict:
             )
 
         st.markdown("**🔢 Port Range**")
+        ports_disabled = scan_type in ("Custom Arguments", "Quick Scan", "Full TCP Scan")
+        port_help = (
+            "Quick Scan automatically scans top 100 common ports."
+            if scan_type == "Quick Scan"
+            else (
+                "Full TCP Scan scans all 65,535 ports."
+                if scan_type == "Full TCP Scan"
+                else "Flags are specified in Custom Arguments."
+                if scan_type == "Custom Arguments"
+                else None
+            )
+        )
         port_range = st.text_input(
             "Ports",
             value="1-1024",
             placeholder="1-65535  |  80,443,8080",
             label_visibility="collapsed",
-            disabled=(scan_type == "Custom Arguments"),
+            disabled=ports_disabled,
+            help=port_help,
         )
 
         st.markdown("**⏱️ Timeout (seconds)**")
@@ -781,7 +794,7 @@ def run_scan(cfg: dict):
         ai_result = None
         if cfg["run_ai"]:
             status_box.markdown(
-                '<div class="scan-status">🤖 Sending data to Groq AI (qwen/qwen3-32b)…</div>',
+                f'<div class="scan-status">🤖 Sending data to Groq AI ({GROQ_MODEL})…</div>',
                 unsafe_allow_html=True,
             )
             progress_bar.progress(70, text="AI analysis in progress…")
@@ -851,11 +864,11 @@ def main():
             </div>
             """, unsafe_allow_html=True)
         with col2:
-            st.markdown("""
+            st.markdown(f"""
             <div style='background:#111820;border:1px solid #1e2d3d;border-radius:12px;padding:1.5rem'>
                 <div style='color:#7b2fff;font-size:1.8rem;margin-bottom:.5rem'>🤖</div>
                 <div style='color:#eaf4ff;font-weight:600;margin-bottom:.4rem'>Groq AI Analysis</div>
-                <div style='color:#5a7a9a;font-size:.83rem'>qwen/qwen3-32b generates professional risk assessments, CVE hints, and hardening guides.</div>
+                <div style='color:#5a7a9a;font-size:.83rem'>{GROQ_MODEL} generates professional risk assessments, CVE hints, and hardening guides.</div>
             </div>
             """, unsafe_allow_html=True)
         with col3:

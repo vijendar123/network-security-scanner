@@ -10,7 +10,7 @@ load_dotenv()
 
 # ─── Groq API ────────────────────────────────────────────────────────────────
 GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
-GROQ_MODEL: str   = "qwen/qwen3-32b"
+GROQ_MODEL: str   = os.getenv("GROQ_MODEL", "qwen/qwen3.8-27b")
 GROQ_MAX_TOKENS: int = 4096
 GROQ_TEMPERATURE: float = 0.4
 
@@ -24,27 +24,27 @@ from typing import Dict
 # ─── Scan Type Definitions ───────────────────────────────────────────────────
 SCAN_TYPES: Dict[str, dict] = {
     "Quick Scan": {
-        "args": "-T4 -F",
+        "args": "-Pn -T4 -F",
         "description": "Fast scan of most common 100 ports",
         "icon": "⚡",
     },
     "Full TCP Scan": {
-        "args": "-T4 -p-",
+        "args": "-Pn -T4 -p-",
         "description": "All 65535 TCP ports — thorough but slow",
         "icon": "🔍",
     },
     "Service Version Detection": {
-        "args": "-T4 -sV -p {ports}",
+        "args": "-Pn -T4 -sV -p {ports}",
         "description": "Identifies service name and version on open ports",
         "icon": "🔬",
     },
     "OS Detection": {
-        "args": "-T4 -O -p {ports}",
+        "args": "-Pn -T4 -O -p {ports}",
         "description": "Attempts to identify the target operating system",
         "icon": "🖥️",
     },
     "Aggressive Scan": {
-        "args": "-T4 -A -p {ports}",
+        "args": "-Pn -T4 -A -p {ports}",
         "description": "OS, version, script scanning, and traceroute",
         "icon": "💥",
     },

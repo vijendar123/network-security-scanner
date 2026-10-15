@@ -2,6 +2,7 @@
 scanner.py — Secure Nmap execution engine for NmapAI Intelligence Scanner
 """
 
+import os
 import subprocess
 import shutil
 import shlex
@@ -27,16 +28,37 @@ class InvalidTargetError(ValueError):
 
 
 # ─── Nmap Availability ────────────────────────────────────────────────────────
+def get_nmap_binary_path() -> Optional[str]:
+    """Find the path to the nmap binary (checks PATH and common installation paths)."""
+    found = shutil.which("nmap")
+    if found:
+        return found
+    if platform.system() == "Windows":
+        common_paths = [
+            r"C:\Program Files (x86)\Nmap\nmap.exe",
+            r"C:\Program Files\Nmap\nmap.exe",
+            os.path.expandvars(r"%LOCALAPPDATA%\Programs\Nmap\nmap.exe"),
+        ]
+        for p in common_paths:
+            if os.path.isfile(p):
+                nmap_dir = os.path.dirname(p)
+                if nmap_dir not in os.environ.get("PATH", ""):
+                    os.environ["PATH"] = nmap_dir + os.pathsep + os.environ.get("PATH", "")
+                return p
+    return None
+
+
 def is_nmap_installed() -> bool:
-    """Return True if nmap binary is available in PATH."""
-    return shutil.which("nmap") is not None
+    """Return True if nmap binary is available."""
+    return get_nmap_binary_path() is not None
 
 
 def get_nmap_version() -> str:
     """Return the installed Nmap version string."""
+    binary = get_nmap_binary_path() or "nmap"
     try:
         result = subprocess.run(
-            ["nmap", "--version"],
+            [binary, "--version"],
             capture_output=True,
             text=True,
             timeout=10,
@@ -69,7 +91,8 @@ def build_nmap_command(
     Returns:
         List[str] suitable for subprocess.run().
     """
-    cmd = ["nmap"]
+    binary = get_nmap_binary_path() or "nmap"
+    cmd = [binary]
 
     if scan_type == "Custom Arguments":
         if not custom_args.strip():
@@ -79,9 +102,15 @@ def build_nmap_command(
     else:
         template = SCAN_TYPES[scan_type]["args"]
         args_str = template.replace("{ports}", port_range)
-        cmd += shlex.split(args_str)
-        # Append port range only if not already embedded in the template
-        if "{ports}" not in template and "-p" not in args_str and port_range:
+        tokens = shlex.split(args_str)
+        cmd += tokens
+        # Append port range only if not already specified, and not in fast mode (-F)
+        if (
+            "{ports}" not in template
+            and not any(t == "-p" or t.startswith("-p") for t in tokens)
+            and "-F" not in tokens
+            and port_range
+        ):
             cmd += ["-p", port_range]
 
     # Always output XML to stdout for reliable parsing
@@ -194,15 +223,15 @@ class NmapScanner:
         self._stderr_output = proc.stderr
         self._returncode = proc.returncode
 
-        if proc.returncode not in (0, 1):
-            # returncode 1 is used by Nmap for some legitimate warnings
-            stderr_snippet = (proc.stderr or "")[:400]
-            logger.warning("Nmap exited with code %d: %s", proc.returncode, stderr_snippet)
-            if not proc.stdout.strip():
+        stderr_snippet = (proc.stderr or "").strip()
+        if proc.returncode != 0 or "QUITTING!" in stderr_snippet or 'exit="error"' in proc.stdout:
+            if "QUITTING!" in stderr_snippet or proc.returncode != 0 or not proc.stdout.strip():
+                logger.error("Nmap failed (code %d): %s", proc.returncode, stderr_snippet)
                 raise RuntimeError(
-                    f"Nmap returned exit code {proc.returncode}.\n"
-                    f"Stderr: {stderr_snippet}"
+                    f"Nmap scan failed (exit code {proc.returncode}):\n{stderr_snippet or 'Check target and parameters'}"
                 )
+            else:
+                logger.warning("Nmap warning (code %d): %s", proc.returncode, stderr_snippet)
 
         logger.info(
             "Scan completed in %.1f seconds (returncode=%d)",
